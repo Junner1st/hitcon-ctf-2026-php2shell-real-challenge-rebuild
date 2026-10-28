@@ -1,0 +1,324 @@
+name: hitcon-php2shell-real
+
+x-db-health: &db-health
+  test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+  interval: 3s
+  timeout: 3s
+  retries: 30
+
+x-db-common: &db-common
+  image: mariadb:11.4
+  networks: [lab]
+  mem_limit: 512m
+  pids_limit: 128
+  restart: unless-stopped
+
+x-target-build: &target-build
+  context: .
+  dockerfile: Dockerfile.wordpress
+
+x-target-common: &target-common
+  platform: ${TARGET_PLATFORM:-linux/amd64}
+  networks: [lab]
+  restart: unless-stopped
+
+services:
+  db-fpm-a:
+    <<: *db-common
+    profiles: [fpm]
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: lab-fpm-a
+      MARIADB_ROOT_PASSWORD: root-fpm-a
+    volumes: [db_fpm_a:/var/lib/mysql]
+    healthcheck: *db-health
+
+  wp-fpm-a:
+    <<: *target-common
+    profiles: [fpm]
+    image: local/php2shell-fpm-a:${FPM_A_BUILD_TAG:-php5.6.35-wp5.7.20}
+    build:
+      <<: *target-build
+      args:
+        PHP_BASE_IMAGE: ${FPM_A_PHP_IMAGE:-php:5.6.35-fpm}
+        WORDPRESS_VERSION: ${FPM_A_WORDPRESS_VERSION:-5.7.20}
+        TARGET_SAPI: fpm
+    command: ["php-fpm"]
+    environment:
+      WORDPRESS_DB_HOST: db-fpm-a:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: lab-fpm-a
+      WORDPRESS_SITE_URL: http://127.0.0.1:${FPM_A_PORT:-18081}
+    volumes: [wp_fpm_a:/var/www/html]
+    depends_on:
+      db-fpm-a: {condition: service_healthy}
+    mem_limit: 768m
+    pids_limit: 128
+
+  nginx-fpm-a:
+    image: nginx:1.30.6-alpine
+    profiles: [fpm]
+    environment: {FPM_UPSTREAM: "wp-fpm-a:9000"}
+    volumes:
+      - wp_fpm_a:/var/www/html:ro
+      - ./nginx/wordpress.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on: [wp-fpm-a]
+    networks: [lab]
+    mem_limit: 128m
+    pids_limit: 64
+    restart: unless-stopped
+
+  setup-fpm-a:
+    profiles: [fpm]
+    platform: ${TARGET_PLATFORM:-linux/amd64}
+    image: local/php2shell-fpm-a:${FPM_A_BUILD_TAG:-php5.6.35-wp5.7.20}
+    build:
+      <<: *target-build
+      args:
+        PHP_BASE_IMAGE: ${FPM_A_PHP_IMAGE:-php:5.6.35-fpm}
+        WORDPRESS_VERSION: ${FPM_A_WORDPRESS_VERSION:-5.7.20}
+        TARGET_SAPI: fpm
+    entrypoint: ["/bin/sh", "/opt/lab/setup-wordpress.sh"]
+    command: []
+    environment:
+      TARGET_PATH: /site
+      TARGET_URL: http://127.0.0.1:${FPM_A_PORT:-18081}
+      TARGET_TITLE: php2shell FPM A
+      WORDPRESS_DB_HOST: db-fpm-a:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: lab-fpm-a
+    volumes:
+      - wp_fpm_a:/site
+      - ./scripts/setup-wordpress.sh:/opt/lab/setup-wordpress.sh:ro
+      - ./scripts/setup-wordpress.php:/opt/lab/setup-wordpress.php:ro
+    depends_on:
+      db-fpm-a: {condition: service_healthy}
+      wp-fpm-a: {condition: service_started}
+    networks: [lab]
+    mem_limit: 256m
+    pids_limit: 64
+    restart: "no"
+
+  db-fpm-b:
+    <<: *db-common
+    profiles: [fpm]
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: lab-fpm-b
+      MARIADB_ROOT_PASSWORD: root-fpm-b
+    volumes: [db_fpm_b:/var/lib/mysql]
+    healthcheck: *db-health
+
+  wp-fpm-b:
+    <<: *target-common
+    profiles: [fpm]
+    image: local/php2shell-fpm-b:${FPM_B_BUILD_TAG:-php7.4.24-wp6.9.5}
+    build:
+      <<: *target-build
+      args:
+        PHP_BASE_IMAGE: ${FPM_B_PHP_IMAGE:-php:7.4.24-fpm}
+        WORDPRESS_VERSION: ${FPM_B_WORDPRESS_VERSION:-6.9.5}
+        TARGET_SAPI: fpm
+    command: ["php-fpm"]
+    environment:
+      WORDPRESS_DB_HOST: db-fpm-b:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: lab-fpm-b
+      WORDPRESS_SITE_URL: http://127.0.0.1:${FPM_B_PORT:-18082}
+    volumes: [wp_fpm_b:/var/www/html]
+    depends_on:
+      db-fpm-b: {condition: service_healthy}
+    mem_limit: 768m
+    pids_limit: 128
+
+  nginx-fpm-b:
+    image: nginx:1.30.6-alpine
+    profiles: [fpm]
+    environment: {FPM_UPSTREAM: "wp-fpm-b:9000"}
+    volumes:
+      - wp_fpm_b:/var/www/html:ro
+      - ./nginx/wordpress.conf.template:/etc/nginx/templates/default.conf.template:ro
+    depends_on: [wp-fpm-b]
+    networks: [lab]
+    mem_limit: 128m
+    pids_limit: 64
+    restart: unless-stopped
+
+  setup-fpm-b:
+    profiles: [fpm]
+    platform: ${TARGET_PLATFORM:-linux/amd64}
+    image: local/php2shell-fpm-b:${FPM_B_BUILD_TAG:-php7.4.24-wp6.9.5}
+    build:
+      <<: *target-build
+      args:
+        PHP_BASE_IMAGE: ${FPM_B_PHP_IMAGE:-php:7.4.24-fpm}
+        WORDPRESS_VERSION: ${FPM_B_WORDPRESS_VERSION:-6.9.5}
+        TARGET_SAPI: fpm
+    entrypoint: ["/bin/sh", "/opt/lab/setup-wordpress.sh"]
+    command: []
+    environment:
+      TARGET_PATH: /site
+      TARGET_URL: http://127.0.0.1:${FPM_B_PORT:-18082}
+      TARGET_TITLE: php2shell FPM B
+      WORDPRESS_DB_HOST: db-fpm-b:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: lab-fpm-b
+    volumes:
+      - wp_fpm_b:/site
+      - ./scripts/setup-wordpress.sh:/opt/lab/setup-wordpress.sh:ro
+      - ./scripts/setup-wordpress.php:/opt/lab/setup-wordpress.php:ro
+    depends_on:
+      db-fpm-b: {condition: service_healthy}
+      wp-fpm-b: {condition: service_started}
+    networks: [lab]
+    mem_limit: 256m
+    pids_limit: 64
+    restart: "no"
+
+  db-apache:
+    <<: *db-common
+    profiles: [apache]
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: lab-apache
+      MARIADB_ROOT_PASSWORD: root-apache
+    volumes: [db_apache:/var/lib/mysql]
+    healthcheck: *db-health
+
+  wp-apache:
+    <<: *target-common
+    profiles: [apache]
+    image: local/php2shell-apache:${APACHE_BUILD_TAG:-php8.4.26-wp6.8.3}
+    build:
+      <<: *target-build
+      args:
+        PHP_BASE_IMAGE: ${APACHE_PHP_IMAGE:-php:8.4.26-apache}
+        WORDPRESS_VERSION: ${APACHE_WORDPRESS_VERSION:-6.8.3}
+        TARGET_SAPI: apache
+    command: ["apache2-foreground"]
+    environment:
+      WORDPRESS_DB_HOST: db-apache:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: lab-apache
+      WORDPRESS_SITE_URL: http://127.0.0.1:${APACHE_PORT:-18083}
+      APACHE_START_SERVERS: ${APACHE_START_SERVERS:-1}
+      APACHE_MIN_SPARE_SERVERS: ${APACHE_MIN_SPARE_SERVERS:-1}
+      APACHE_MAX_SPARE_SERVERS: ${APACHE_MAX_SPARE_SERVERS:-4}
+      APACHE_MAX_REQUEST_WORKERS: ${APACHE_MAX_REQUEST_WORKERS:-4}
+      APACHE_MAX_CONNECTIONS_PER_CHILD: ${APACHE_MAX_CONNECTIONS_PER_CHILD:-0}
+    volumes: [wp_apache:/var/www/html]
+    depends_on:
+      db-apache: {condition: service_healthy}
+    mem_limit: ${APACHE_CONTAINER_MEMORY:-1g}
+    pids_limit: ${APACHE_CONTAINER_PIDS:-128}
+
+  setup-apache:
+    profiles: [apache]
+    platform: ${TARGET_PLATFORM:-linux/amd64}
+    image: local/php2shell-apache:${APACHE_BUILD_TAG:-php8.4.26-wp6.8.3}
+    build:
+      <<: *target-build
+      args:
+        PHP_BASE_IMAGE: ${APACHE_PHP_IMAGE:-php:8.4.26-apache}
+        WORDPRESS_VERSION: ${APACHE_WORDPRESS_VERSION:-6.8.3}
+        TARGET_SAPI: apache
+    entrypoint: ["/bin/sh", "/opt/lab/setup-wordpress.sh"]
+    command: []
+    environment:
+      TARGET_PATH: /site
+      TARGET_URL: http://127.0.0.1:${APACHE_PORT:-18083}
+      TARGET_TITLE: php2shell Apache
+      WORDPRESS_DB_HOST: db-apache:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: lab-apache
+    volumes:
+      - wp_apache:/site
+      - ./scripts/setup-wordpress.sh:/opt/lab/setup-wordpress.sh:ro
+      - ./scripts/setup-wordpress.php:/opt/lab/setup-wordpress.php:ro
+    depends_on:
+      db-apache: {condition: service_healthy}
+      wp-apache: {condition: service_started}
+    networks: [lab]
+    mem_limit: 256m
+    pids_limit: 64
+    restart: "no"
+
+  background-traffic:
+    image: curlimages/curl:8.12.1
+    profiles: [traffic]
+    user: "100:101"
+    entrypoint: ["/bin/sh", "/opt/lab/background-traffic.sh"]
+    environment:
+      # Unavailable targets are tolerated, so traffic can accompany either the
+      # apache profile, the fpm profile, or both.
+      TRAFFIC_ORIGINS: ${TRAFFIC_ORIGINS:-http://nginx-fpm-a http://nginx-fpm-b http://wp-apache}
+    volumes: [./scripts/background-traffic.sh:/opt/lab/background-traffic.sh:ro]
+    networks: [lab]
+    mem_limit: 64m
+    pids_limit: 32
+    restart: unless-stopped
+
+  gateway-fpm:
+    image: ${GATEWAY_IMAGE:-nginx:1.30.6-alpine}
+    profiles: [fpm]
+    user: "101:101"
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./nginx/gateway-fpm-stream.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:${FPM_A_PORT:-18081}:8081"
+      - "127.0.0.1:${FPM_B_PORT:-18082}:8082"
+    depends_on: [nginx-fpm-a, nginx-fpm-b]
+    networks: [lab, edge]
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:mode=1777
+      - /var/run:mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 64m
+    pids_limit: 32
+    restart: unless-stopped
+
+  gateway-apache:
+    image: ${GATEWAY_IMAGE:-nginx:1.30.6-alpine}
+    profiles: [apache]
+    user: "101:101"
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    volumes:
+      - ./nginx/gateway-apache-stream.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:${APACHE_PORT:-18083}:8083"
+    depends_on: [wp-apache]
+    networks: [lab, edge]
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:mode=1777
+      - /var/run:mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 64m
+    pids_limit: 32
+    restart: unless-stopped
+
+networks:
+  lab:
+    internal: true
+  edge:
+
+volumes:
+  db_fpm_a:
+  db_fpm_b:
+  db_apache:
+  wp_fpm_a:
+  wp_fpm_b:
+  wp_apache:

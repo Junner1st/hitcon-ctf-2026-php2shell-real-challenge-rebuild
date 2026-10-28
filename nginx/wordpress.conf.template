@@ -1,0 +1,29 @@
+server {
+    listen 80;
+    server_name _;
+
+    root /var/www/html;
+    index index.php index.html;
+
+    # Keep multipart requests large enough to reach PHP's 128 MiB memory limit.
+    client_max_body_size 256m;
+    client_body_timeout 300s;
+
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_pass ${FPM_UPSTREAM};
+        fastcgi_request_buffering off;
+        fastcgi_read_timeout 300s;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
