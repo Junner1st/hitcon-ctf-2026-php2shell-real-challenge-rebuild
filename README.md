@@ -51,7 +51,7 @@ Apache if quieter logs are desired.
 
 ## Version matrix
 
-The checked-in matrix is the cross product of:
+The first eight presets are the cross product of:
 
 - FPM A: PHP `5.6.35` or `5.6.39`
 - FPM B: PHP `7.1.4` or `7.4.24`
@@ -63,7 +63,12 @@ only one exact 5.6 patch version, so `5.6.39` is the second choice retained from
 the earlier verified reconstruction; it is not claimed as a recovered live
 version.
 
-There are eight files in `presets/versions/`. Select one explicitly:
+An additional preset, `09-8226-8510-8426.env`, runs FPM A on PHP `8.2.26`,
+FPM B on PHP `8.5.10`, and Apache on PHP `8.4.26`. It pairs them with
+WordPress `6.9.5`, `7.0.6`, and `6.8.3`, respectively. These are lab pairings,
+not recovered organizer spawn combinations.
+
+There are nine files in `presets/versions/`. Select one explicitly:
 
 ```sh
 docker compose \
@@ -71,6 +76,9 @@ docker compose \
   --env-file presets/workers/small-pool.env \
   --profile apache --profile fpm up -d --build
 ```
+
+For the `8.2.26 / 8.5.10 / 8.4.26` combination, use
+`--env-file presets/versions/09-8226-8510-8426.env` in the same command.
 
 Each image is built from an exact `php:<patch>-fpm` or `php:<patch>-apache`
 base plus the listed WordPress release. This avoids floating `php8.x` image

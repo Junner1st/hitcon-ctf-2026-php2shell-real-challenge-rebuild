@@ -18,13 +18,16 @@
 
 ## Reproduction version profiles
 
-`presets/versions/` contains a reproducible 2×2×2 matrix: PHP 5.6.35/5.6.39,
-7.1.4/7.4.24 and 8.4.26/8.5.11. All except 5.6.39 are exact live or calibrated
-lab versions named in the handoff. PHP 5.6.39 is retained as the second 5.6
-choice from the earlier verified reconstruction because the handoff names only
-one exact 5.6 patch release. The selected exact `php:<patch>` image is combined
+The first eight presets in `presets/versions/` form a reproducible 2×2×2 matrix:
+PHP 5.6.35/5.6.39, 7.1.4/7.4.24 and 8.4.26/8.5.11. The ninth preset adds
+FPM A 8.2.26, FPM B 8.5.10 and Apache 8.4.26. Of the original matrix versions,
+all except 5.6.39 are exact live or calibrated lab versions named in the handoff.
+PHP 5.6.39 is retained as the second 5.6 choice from the earlier verified
+reconstruction because the handoff names only one exact 5.6 patch release. The
+selected exact `php:<patch>` image is combined
 with a fixed WordPress tarball at build time; these cross-product presets are
-research cases, not claimed organizer spawn combinations.
+research cases, not claimed organizer spawn combinations. The ninth preset is
+also a lab pairing, not a recovered organizer spawn combination.
 
 ## Technical consensus from the useful discussions
 
