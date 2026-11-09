@@ -317,8 +317,14 @@ networks:
 
 volumes:
   db_fpm_a:
+    name: ${COMPOSE_PROJECT_NAME:-hitcon-php2shell-real}_db_fpm_a_${FPM_A_BUILD_TAG:-php5.6.35-wp5.7.20}
   db_fpm_b:
+    name: ${COMPOSE_PROJECT_NAME:-hitcon-php2shell-real}_db_fpm_b_${FPM_B_BUILD_TAG:-php7.4.24-wp6.9.5}
   db_apache:
+    name: ${COMPOSE_PROJECT_NAME:-hitcon-php2shell-real}_db_apache_${APACHE_BUILD_TAG:-php8.4.26-wp6.8.3}
   wp_fpm_a:
+    name: ${COMPOSE_PROJECT_NAME:-hitcon-php2shell-real}_wp_fpm_a_${FPM_A_BUILD_TAG:-php5.6.35-wp5.7.20}
   wp_fpm_b:
+    name: ${COMPOSE_PROJECT_NAME:-hitcon-php2shell-real}_wp_fpm_b_${FPM_B_BUILD_TAG:-php7.4.24-wp6.9.5}
   wp_apache:
+    name: ${COMPOSE_PROJECT_NAME:-hitcon-php2shell-real}_wp_apache_${APACHE_BUILD_TAG:-php8.4.26-wp6.8.3}

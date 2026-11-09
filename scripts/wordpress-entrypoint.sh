@@ -1,6 +1,16 @@
 #!/bin/sh
 set -eu
 
+if [ -e /var/www/html/wp-includes/version.php ]; then
+    installed_version="$(php -r 'require "/var/www/html/wp-includes/version.php"; echo $wp_version;')"
+    image_version="$(php -r 'require "/usr/src/wordpress/wp-includes/version.php"; echo $wp_version;')"
+    if [ "$installed_version" != "$image_version" ]; then
+        printf 'WordPress volume version %s does not match image version %s. Select matching volumes or reset this preset.\n' \
+            "$installed_version" "$image_version" >&2
+        exit 1
+    fi
+fi
+
 if [ ! -e /var/www/html/index.php ]; then
     cp -a /usr/src/wordpress/. /var/www/html/
 fi

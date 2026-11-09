@@ -30,7 +30,7 @@ intended.
 ```sh
 cd challenge
 docker compose --profile apache --profile fpm up -d --build
-./scripts/verify.sh
+./scripts/verify.sh --profile apache --profile fpm
 ```
 
 Start only the Apache research target:
@@ -75,20 +75,33 @@ docker compose \
   --env-file presets/versions/02-5635-714-8511.env \
   --env-file presets/workers/small-pool.env \
   --profile apache --profile fpm up -d --build
+./scripts/verify.sh \
+  --env-file presets/versions/02-5635-714-8511.env \
+  --env-file presets/workers/small-pool.env \
+  --profile apache --profile fpm
 ```
 
 For the `8.2.26 / 8.5.10 / 8.4.26` combination, use
 `--env-file presets/versions/09-8226-8510-8426.env` in the same command.
+Pass the same Compose options to `verify.sh`; it checks setup exit codes,
+the PHP and WordPress versions, and HTTP 200 responses.
 
 Each image is built from an exact `php:<patch>-fpm` or `php:<patch>-apache`
 base plus the listed WordPress release. This avoids floating `php8.x` image
 tags silently changing the PHP patch version. Targets default to `linux/amd64`
 because allocator layout and symbol offsets are architecture-specific.
 
-Changing version presets requires fresh WordPress/database volumes:
+WordPress and database volumes are named by each service's PHP/WordPress build
+tag. Selecting a different version creates separate volumes while preserving
+the previous version's data. The older, unversioned volumes are also preserved.
+The container refuses to start if an attached WordPress volume contains files
+from a different release.
+
+To reset the selected preset's data, pass the same version file when stopping:
 
 ```sh
-docker compose --profile apache --profile fpm down --volumes --remove-orphans
+docker compose --env-file presets/versions/09-8226-8510-8426.env \
+  --profile apache --profile fpm down --volumes --remove-orphans
 ```
 
 ## Apache worker presets
@@ -128,5 +141,6 @@ chosen build and adjust before using it. It is intentionally not the default.
   notes and do not expose this deliberately vulnerable lab publicly.
 
 Stop the lab while preserving data with `docker compose down`, or add
-`--volumes` for a complete reset. See [RESEARCH.md](RESEARCH.md) and the root
-handoff for evidence and remaining fidelity limits.
+`--volumes` with the matching version file to reset that preset. See
+[RESEARCH.md](RESEARCH.md) and the root handoff for evidence and remaining
+fidelity limits.
